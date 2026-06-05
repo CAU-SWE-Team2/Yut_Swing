@@ -1,55 +1,64 @@
 package com.yut.controller;
 
-import com.yut.Main;
 import com.yut.controller.model_interfaces.GameModelInterface;
 import com.yut.controller.model_interfaces.GameTurnModelInterface;
 import com.yut.controller.view_interfaces.GameScreenInterface;
 import com.yut.model.Node;
-import com.yut.model.Game;
 import com.yut.model.Group;
 import com.yut.model.Player;
+import com.yut.model.YutResult;
 import com.yut.ui.swing.EndingFrame;
 import com.yut.ui.swing.GameScreen;
-import com.yut.ui.swing.MainFrame;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import javax.swing.JOptionPane;
 
 public class GameController {
 
-    private GameModelInterface gameModel;
-
-    private GameScreen gameScreen;
+    private final GameModelInterface gameModel;
+    private final GameScreen gameScreen;
 
     public GameController(GameModelInterface gameModel, GameScreen gameScreen) {
         this.gameModel = gameModel;
         this.gameScreen = gameScreen;
 
-        gameScreen.getNodeMap().forEach((nodeId, node) -> {
-            gameScreen.addNodeClickListener(node, new NodeClickListener(nodeId));
-        });
+        registerEventCallback();
+
+        gameScreen.getNodeMap().forEach((nodeId, node) ->
+            gameScreen.addNodeClickListener(node, new NodeClickListener(nodeId))
+        );
 
         gameScreen.addRandomThrowButtonListener(new RandomThrowButtonListener());
 
-        for (int i = 0; i < 6; i++)
+        for (int i = 0; i < YutResult.values().length; i++)
             gameScreen.addSelectedThrowButtonListener(i, new SelectThrowButtonListener(i));
 
         gameScreen.addMoveNewPieceButtonListener(new MoveNewPieceButtonListener());
 
-        for (int i = 1; i <= gameModel.getPlayerCount(); i++) {
+        for (int i = 1; i <= gameModel.getPlayerCount(); i++)
             gameScreen.updatePlayerCanvas(i, gameModel.getNumOfTotalPieces());
-        }
+
         gameScreen.highlightCurrentPlayer(gameModel.getCurrentPlayer().getId());
         gameScreen.addGoalButtonListener(new GoalButtonListener());
+    }
 
+    private void registerEventCallback() {
+        gameModel.getGameTurn().setEventCallback(event -> {
+            String message = switch (event) {
+                case EXTRA_TURN_GRANTED -> "한 번 더 던지세요!";
+                case BACKDO_SKIPPED     -> "뒤로 갈 수 있는 말이 없습니다!";
+            };
+            JOptionPane.showMessageDialog(gameScreen, message);
+        });
     }
 
     class NodeClickListener extends MouseAdapter {
-        private int nodeId;
+        private final int nodeId;
 
-        public NodeClickListener(int nodeId) {
+        NodeClickListener(int nodeId) {
             this.nodeId = nodeId;
         }
 
@@ -63,61 +72,38 @@ public class GameController {
             Node node = gameModel.getBoard().getNodeById(nodeId);
             Player currentPlayer = gameModel.getCurrentPlayer();
 
-
             gameScreen.setGoalButtonVisible(false);
 
-            // 그룹 이동
             if (gameScreen.getNodeState(nodeId) == 1) {
                 Group targetGroup = currentPlayer.getMoveTarget();
 
                 if (targetGroup.getCurrentLocation().getId() != 111)
                     gameScreen.deletePiece(targetGroup.getCurrentLocation().getId());
-               
+
                 gameScreen.deletePiece(nodeId);
                 gameTurnModel.move(targetGroup);
                 gameScreen.printDeckContents(gameTurnModel.getLeftYuts());
-
-                gameScreen.updatePlayerCanvas(currentPlayer.getId(), gameModel.getCurrentPlayer().getNumOfCurrentPieces());
-
-                
-
-
-                ///////)
+                gameScreen.updatePlayerCanvas(currentPlayer.getId(), currentPlayer.getNumOfCurrentPieces());
                 gameScreen.drawPiece(nodeId, currentPlayer.getId(), node.getCurrentGroup().getNumOfPieces());
                 gameScreen.deleteMovePreview();
 
-                // gameScreen.select(nodeId);
-
-                // gameTurnModel.
                 if (gameTurnModel.getLeftYuts().isEmpty() && gameTurnModel.getRollCount() == 0)
                     gameModel.switchTurn();
-                Player newPlayer = gameModel.getCurrentPlayer();
-                gameScreen.highlightCurrentPlayer(newPlayer.getId());
 
-            }
-            // 아무것도 안함
-            else if (gameScreen.getNodeState(nodeId) == 2) {
-                // gameScreen.select(nodeId);
-            }
+                gameScreen.highlightCurrentPlayer(gameModel.getCurrentPlayer().getId());
 
-            // 힌트 표시
-            else if (gameScreen.getNodeState(nodeId) == 3) {
-                if(node.getCurrentGroup().getOwner().getId() == currentPlayer.getId()){
+            } else if (gameScreen.getNodeState(nodeId) == 3) {
+                if (node.getCurrentGroup().getOwner().getId() == currentPlayer.getId()) {
                     currentPlayer.chooseTarget(node.getCurrentGroup());
                     gameScreen.deleteMovePreview();
                     Node toNode = gameTurnModel.showNextMove(node.getCurrentGroup());
-                
-                    if(toNode.getId() != 0)
+
+                    if (toNode.getId() != 0)
                         gameScreen.showMovePreview(toNode.getId(), currentPlayer.getId());
-                    else{
+                    else
                         gameScreen.setGoalButtonVisible(true);
-                    }
                 }
-
-                // gameScreen.select(nodeId);
-
             }
-
         }
     }
 
@@ -134,11 +120,8 @@ public class GameController {
             if (waitingGroup != null) {
                 gameScreen.deleteMovePreview();
                 currentPlayer.chooseTarget(waitingGroup);
-
                 Node toNode = gameTurnModel.showNextMove(waitingGroup);
-
                 gameScreen.showMovePreview(toNode.getId(), currentPlayer.getId());
-
             }
         }
     }
@@ -151,17 +134,18 @@ public class GameController {
                 return;
 
             gameTurnModel.roll(-2);
-            int result = gameTurnModel.getLeftYuts().getLast();
-            
-            gameScreen.updateRandomResult(result);
+
+            if (!gameTurnModel.getLeftYuts().isEmpty())
+                gameScreen.updateRandomResult(gameTurnModel.getLeftYuts().getLast());
+
             gameScreen.printDeckContents(gameTurnModel.getLeftYuts());
         }
     }
 
     class SelectThrowButtonListener implements ActionListener {
-        private int type;
+        private final int type;
 
-        public SelectThrowButtonListener(int type) {
+        SelectThrowButtonListener(int type) {
             this.type = type;
         }
 
@@ -173,39 +157,37 @@ public class GameController {
 
             gameTurnModel.roll(type);
 
-            gameScreen.updateRandomResult(gameTurnModel.getLeftYuts().getLast());
+            if (!gameTurnModel.getLeftYuts().isEmpty())
+                gameScreen.updateRandomResult(gameTurnModel.getLeftYuts().getLast());
+
             gameScreen.printDeckContents(gameTurnModel.getLeftYuts());
         }
     }
 
-
     class GoalButtonListener implements ActionListener {
-
         @Override
         public void actionPerformed(ActionEvent e) {
             GameTurnModelInterface gameTurnModel = gameModel.getGameTurn();
-            if(gameTurnModel.getState() == GameTurnModelInterface.THROWABLE)
+            if (gameTurnModel.getState() == GameTurnModelInterface.THROWABLE)
                 return;
-                
-            
-            Player currentPlayer = gameModel.getCurrentPlayer();
 
+            Player currentPlayer = gameModel.getCurrentPlayer();
             Group targetGroup = currentPlayer.getMoveTarget();
+
             gameScreen.deletePiece(targetGroup.getCurrentLocation().getId());
             gameTurnModel.move(targetGroup);
-
             gameScreen.printDeckContents(gameTurnModel.getLeftYuts());
             targetGroup.goal();
 
-            if (gameTurnModel.getLeftYuts().isEmpty() && gameTurnModel.getRollCount() == 0){
+            if (gameTurnModel.getLeftYuts().isEmpty() && gameTurnModel.getRollCount() == 0) {
                 gameModel.switchTurn();
                 gameScreen.highlightCurrentPlayer(gameModel.getCurrentPlayer().getId());
             }
 
-            gameScreen.updatePlayerCanvas(currentPlayer.getId(), gameModel.getNumOfTotalPieces() - targetGroup.getNumOfPieces());
+            gameScreen.updatePlayerCanvas(currentPlayer.getId(), currentPlayer.getNumOfCurrentPieces());
             gameScreen.setGoalButtonVisible(false);
 
-            if(currentPlayer.getNumOfCurrentPieces() == 0){
+            if (currentPlayer.getNumOfCurrentPieces() == 0) {
                 EndingFrame endingFrame = new EndingFrame(currentPlayer.getId());
                 endingFrame.setVisible(true);
                 gameScreen.setVisible(false);

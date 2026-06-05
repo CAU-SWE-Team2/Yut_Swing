@@ -29,5 +29,5 @@ tasks.test {
 
 
 application {
-    mainClass.set("com.yut.ui.swing.GameWindow")
+    mainClass.set("com.yut.Main")
 }

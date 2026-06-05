@@ -1,11 +1,8 @@
 package com.yut.ui.swing;
 
-import com.yut.ui.swing.MainFrame;
-
 import java.awt.event.ActionListener;
 import javax.swing.*;
 import java.awt.*;
-import java.util.Map;
 
 public class StartScreen extends JPanel {
 
@@ -139,45 +136,4 @@ public class StartScreen extends JPanel {
         startButton.addActionListener(listener);
     }
 
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            MainFrame frame = new MainFrame();
-            frame.setVisible(true);
-
-            frame.showGame(6, 4, 5);
-            GameScreen gameScreen = frame.getGameScreen();
-            gameScreen.drawPiece(200, 1, 1);
-            gameScreen.showMovePreview(300, 1);
-            gameScreen.updatePlayerCanvas(1, 3);
-            System.out.println("100 status:" + gameScreen.getNodeState(100));
-            System.out.println("200 status:" + gameScreen.getNodeState(200));
-            System.out.println("300 status:" + gameScreen.getNodeState(300));
-            gameScreen.select(561);
-            gameScreen.select(500);
-            gameScreen.updateRandomResult(1);
-            gameScreen.updateRandomResult(2);
-
-            /*
-             * gameScreen.drawPiece();
-             * gameScreen.deletePiece();
-             * gameScreen.showMovePreview();
-             * gameScreen.deleteMovePreview();
-             * gameScreen.updatePlayerCanvas();
-             * gameScreen.updateRandomResult();
-             * 
-             * int nodeState = gameScreen.getNodeState();
-             * 
-             * gameScreen.select();
-             * 
-             * gameScreen.addRandomThrowButtonListener();
-             * gameScreen.addSelectedThrowButtonListener();
-             * gameScreen.addBackButtonListener();
-             * gameScreen.addNodeClickListener();
-             * 
-             */
-
-            // Map<Integer, ClickableNode> nodeMap = gameScreen.getNodeMap();
-        });
-
-    }
 }

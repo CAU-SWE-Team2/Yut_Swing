@@ -49,7 +49,7 @@ public class Game implements GameModelInterface {
     }
 
     public boolean ifGameEnded(){
-        for (int i = 0; i < players.size(); i++){
+        for (int i = 1; i <= players.size(); i++){
             Player player = players.getPlayer(i);
             if(player.getNumOfCurrentPieces() == 0)
                 return true;

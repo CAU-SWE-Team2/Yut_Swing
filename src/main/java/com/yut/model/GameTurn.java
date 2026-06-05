@@ -2,103 +2,87 @@ package com.yut.model;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.function.Consumer;
 
-import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-
-import com.yut.controller.model_interfaces.GameTurnModelInterface;   
+import com.yut.controller.model_interfaces.GameTurnModelInterface;
 
 public class GameTurn implements GameTurnModelInterface {
 
-    
-    
-    private Deque<Integer> leftYuts;
-
-    private Player currentPlayer;
-
+    private Deque<YutResult> leftYuts;
+    private final Player currentPlayer;
     private int rollCount;
-    private Yut yut;
-
+    private final Yut yut;
     private int state;
-
+    private Consumer<Event> eventCallback;
 
     public GameTurn(Player currentPlayer) {
         this.currentPlayer = currentPlayer;
         this.rollCount = 1;
         this.yut = Yut.getYut();
-        leftYuts = new ArrayDeque<Integer>();
-
-        state = GameTurnModelInterface.THROWABLE;
+        this.leftYuts = new ArrayDeque<>();
+        this.state = GameTurnModelInterface.THROWABLE;
     }
 
+    @Override
+    public void setEventCallback(Consumer<Event> callback) {
+        this.eventCallback = callback;
+    }
 
-    // type == -2면 랜덤, 아니면 type을 사용
-    public void roll(int type){
-        if(type == -2)
+    private void fireEvent(Event event) {
+        if (eventCallback != null) eventCallback.accept(event);
+    }
+
+    // type == -2면 랜덤, 아니면 YutResult.of(type)으로 변환
+    @Override
+    public void roll(int type) {
+        if (type == -2)
             yut.rollYutRandomly();
         else
-            yut.rollYutSelected(type);
+            yut.rollYutSelected(YutResult.of(type));
 
-        int result = yut.getCurrent();
-
+        YutResult result = yut.getCurrent();
         rollCount--;
 
-        if(result == Yut.YUT || result == Yut.MO){
+        if (result.grantsExtraTurn()) {
             rollCount++;
-            SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(null, "한 번 더 던지세요!", "추가 턴", JOptionPane.INFORMATION_MESSAGE);
-            });
+            fireEvent(Event.EXTRA_TURN_GRANTED);
             leftYuts.addLast(result);
-        }
-        else if(result == Yut.BACKDO && (currentPlayer.getNumOfWaitingPieces() == Player.numOfTotalPieces)){
-            JOptionPane.showMessageDialog(null, "뒤로 갈 수 있는 말이 없습니다!", "Backdo", JOptionPane.INFORMATION_MESSAGE);
+        } else if (result.isBackdo() && currentPlayer.getNumOfWaitingPieces() == currentPlayer.getTotalPieces()) {
+            fireEvent(Event.BACKDO_SKIPPED);
             rollCount++;
-        }
-        else{
+        } else {
             leftYuts.addLast(result);
         }
 
-         // 남은 윷이 없으면 턴 종료
-        if(rollCount == 0)
+        if (rollCount == 0)
             state = GameTurnModelInterface.HASTOMOVE;
     }
 
-    // 그룹을 보내면 현재 가지고 있는 윷을 사용해 이동할 수 있는 노드를 보여줌
-    public Node showNextMove(Group group){
-        int nextYut = leftYuts.getFirst();
-        if(nextYut == Yut.BACKDO) nextYut = -1;
-        return group.getNextNode(nextYut);
+    @Override
+    public Node showNextMove(Group group) {
+        YutResult nextYut = leftYuts.getFirst();
+        return group.getNextNode(nextYut.getSteps());
     }
 
-    //result == 0 업음, 1 잡음, 2 그냥 이동
-    public void move(Group group){
-        int nextYut = leftYuts.getFirst();
-        if(nextYut == Yut.BACKDO) nextYut = -1;
-        int result = group.move(group.getNextNode(nextYut));
-        
-        if(result == 1 && currentPlayer.getNumOfCurrentPieces() != 0){
-            SwingUtilities.invokeLater(() -> {
-                JOptionPane.showMessageDialog(null, "한 번 더 던지세요!", "추가 턴", JOptionPane.INFORMATION_MESSAGE);
-            });
+    @Override
+    public void move(Group group) {
+        YutResult nextYut = leftYuts.getFirst();
+        int result = group.move(group.getNextNode(nextYut.getSteps()));
+
+        if (result == 1 && currentPlayer.getNumOfCurrentPieces() != 0) {
+            fireEvent(Event.EXTRA_TURN_GRANTED);
             rollCount++;
             state = GameTurnModelInterface.THROWABLE;
-        }             
+        }
         leftYuts.removeFirst();
-
     }
 
-    public int getState(){
-        return state;
-    }
-    // public void setState(int state){
-    //     this.state = state;
-    // }
-    
-    public Deque<Integer> getLeftYuts(){
-        return leftYuts;
-    }
+    @Override
+    public int getState() { return state; }
 
-    public int getRollCount(){
-        return rollCount;
-    }
+    @Override
+    public Deque<YutResult> getLeftYuts() { return leftYuts; }
+
+    @Override
+    public int getRollCount() { return rollCount; }
 }

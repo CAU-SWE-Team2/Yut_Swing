@@ -10,12 +10,11 @@ import com.yut.controller.model_interfaces.GameModelInterface;
 import com.yut.model.Game;
 
 public class TitleController{
-    
-    static MainFrame mainFrame;
-    static StartScreen startScreen;
 
-    static GameModelInterface gameModel;
-    static GameController gameController;
+    private final MainFrame mainFrame;
+    private StartScreen startScreen;
+    private GameModelInterface gameModel;
+    private GameController gameController;
 
     public TitleController(MainFrame mainFrame) {
         this.mainFrame = mainFrame;

@@ -4,17 +4,18 @@ import java.util.ArrayList;
 
 public class Player {
     int id;
-    static int numOfTotalPieces;
+    private final int totalPieces;
     int numOfCurrentPieces;
     ArrayList<Group> currentGroups = new ArrayList<Group>();
     Group moveTarget;
 
     Player(int id){
         this.id = id;
+        this.totalPieces = 0;
     }
     Player(int id, int numOfPieces){
         this.id = id;
-        this.numOfTotalPieces = numOfPieces;
+        this.totalPieces = numOfPieces;
         this.numOfCurrentPieces = numOfPieces;
     }
 
@@ -53,6 +54,10 @@ public class Player {
 
     public int getNumOfCurrentPieces(){
         return this.numOfCurrentPieces;
+    }
+
+    public int getTotalPieces(){
+        return this.totalPieces;
     }
 
     public int getId(){
